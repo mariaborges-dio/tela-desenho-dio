@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Editor de imagem — rotação de implante</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;family=Roboto+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#479ff8}a:hover{color:#2f86e0}
+.tb-btn{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border:0;border-radius:4px;background:#394150;color:#fff;font:400 18px Roboto,sans-serif;cursor:pointer}
+.tb-btn:hover{background:#465063}
+.side-tile{display:flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:#394150;padding:0;cursor:pointer}
+.side-tile:hover{background:#465063}
+.chev{display:flex;align-items:center;justify-content:center;width:20px;height:64px;border:0;border-radius:4px;background:#394150;color:#fff;padding:0;cursor:pointer}
+.obj{cursor:move;touch-action:none}
+.rot{cursor:url(/_blob/a441cd8eada68287509ab5ac2a77623b) 14 14, grab;touch-action:none}
+.rot-ring{transition:background-color 120ms ease, color 120ms ease, box-shadow 120ms ease}
+.stage-rotating, .stage-rotating *{cursor:url(/_blob/a441cd8eada68287509ab5ac2a77623b) 14 14, grabbing !important}
+.pill{transition:background-color 120ms ease}
+.mtile{position:relative;display:flex;align-items:center;justify-content:center;width:95px;height:62px;border:0;border-radius:4px;padding:0;cursor:pointer;touch-action:none;transition:background-color 120ms ease, box-shadow 120ms ease}
+.mtile:hover{filter:brightness(1.12)}
+.hint-btn{height:28px;padding:0 10px;border:1px solid rgba(255,255,255,.35);border-radius:4px;background:transparent;color:#fff;font:500 13px Roboto,sans-serif;cursor:pointer}
+.hint-btn:hover{background:rgba(255,255,255,.12)}
+.img-armed{cursor:crosshair}
+.hnd{position:absolute;width:24px;height:24px;display:flex;align-items:center;justify-content:center;touch-action:none}
+.hnd>span:not(.hnd-on){display:block;width:7px;height:7px;background:#fff;border:1.5px solid #479ff8}
+.hnd:hover>span:not(.hnd-on){background:#479ff8}
+</style>
+</helmet>
+<div data-stage="1" class="{{stageCls}}" style="position: relative; touch-action: none; width: 1320px; height: 780px; overflow: hidden; background: #282828; font-family: Roboto, sans-serif; color: #fff; user-select: none; -webkit-user-select: none">
+
+<!-- Sidebar -->
+<div style="position: absolute; left: 10px; top: 8px; width: 116px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; gap: 4px"><button class="side-tile" aria-label="Dente" style="width: 92px; height: 64px"><img src="/_blob/a11cfb80c15cdabd7441e3dac4153fa1" alt="" style="width: 82px; height: 58px"></button><button class="chev" aria-label="Mais opções de dente"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div style="display: flex; gap: 4px"><button class="side-tile" aria-label="Implante" aria-expanded="{{flyoutOpen}}" onClick="{{toggleFlyout}}" style="{{toolTileStyle}}"><img src="{{toolThumb}}" alt="" style="{{toolThumbStyle}}"></button><button class="chev" aria-label="Mais opções de implante" onClick="{{toggleFlyout}}" style="{{toolChevStyle}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div style="display: flex; gap: 4px"><button class="side-tile" aria-label="Prótese" style="width: 92px; height: 64px"><img src="/_blob/e00e6b1958a69a938c1289cca3c89076" alt="" style="width: 82px; height: 58px"></button><button class="chev" aria-label="Mais opções de prótese"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div style="display: flex; gap: 4px"><button class="side-tile" aria-label="Enxerto" style="width: 92px; height: 64px"><img src="/_blob/a9cea660c8712ef778c7a4ca9372ff1e" alt="" style="width: 82px; height: 58px"></button><button class="chev" aria-label="Mais opções de enxerto"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div style="display: flex; gap: 4px"><button class="side-tile" aria-label="Pino" style="width: 92px; height: 64px"><img src="/_blob/3ea4bfb12ea898bccb4fef249d7cfc3f" alt="" style="width: 82px; height: 58px"></button><button class="chev" aria-label="Mais opções de pino"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div style="display: flex; gap: 4px"><button class="side-tile" aria-label="Contenção" style="width: 92px; height: 64px"><img src="/_blob/527d836dd497937b24d6386de1c6a9d9" alt="" style="width: 82px; height: 58px"></button><button class="chev" aria-label="Mais opções de contenção"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<button class="side-tile" aria-label="Remover dente" style="width: 116px; height: 64px"><img src="/_blob/4a53575cae23c3cdec584039b99d6e16" alt="" style="width: 106px; height: 58px"></button>
+<div style="height: 12px"></div>
+<button class="tb-btn" style="width: 116px; height: 40px; justify-content: center; font-size: 17px"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M10.6 3h2.8l7 18h-3.2l-1.6-4.3H8.4L6.8 21H3.6zm-1.2 11h5.2L12 7z"></path></svg>Texto</button>
+<div style="display: flex; gap: 4px"><button class="tb-btn" style="width: 92px; height: 64px; justify-content: center; font-size: 17px; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"></path><path d="m7.5 10.5 2-2"></path><path d="m10.5 13.5 2-2"></path><path d="m13.5 16.5 2-2"></path></svg>Medir</button><button class="chev" aria-label="Opções de medição"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg></button></div>
+<div style="display: flex; gap: 8px; padding-left: 2px"><button class="tb-btn" aria-label="Desfazer" style="width: 52px; height: 40px; justify-content: center; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"></path><path d="M3 3v5h5"></path></svg></button><button class="tb-btn" aria-label="Refazer" style="width: 52px; height: 40px; justify-content: center; padding: 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"></path><path d="M21 3v5h-5"></path></svg></button></div>
+<button class="tb-btn" style="width: 112px; height: 40px; justify-content: center; font-size: 17px; margin-left: 2px"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.7 2.3a1 1 0 0 0-1.4 0L9 12.6l2.4 2.4L21.7 4.7a1 1 0 0 0 0-1.4zM7.5 14c-2 0-3.5 1.6-3.5 3.5 0 1.2-.8 2.2-2 2.5 1 1 2.6 1.5 4 1.5 2.8 0 5-2.2 5-5 0-.4 0-.7-.1-1z"></path></svg>Lápis</button>
+<div style="font-size: 17px; color: #fff; margin-top: 8px; padding-left: 2px">Espessura do lápis</div>
+</div>
+<div style="position: absolute; left: 137px; top: 6px; width: 4px; height: 774px; background: #6f6f6f; border-radius: 2px; pointer-events: none"></div>
+
+<!-- Top bar -->
+<div style="position: absolute; left: 148px; top: 8px; right: 0; height: 52px; display: flex; align-items: center; gap: 8px">
+<span style="font-weight: 700; font-size: 20px; margin-right: 8px">Filtros:</span>
+<button class="tb-btn" style="background: #414141; height: 52px; padding: 0 12px 0 16px; font-size: 18px">Imagem sem traçados<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button>
+<label style="display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 10px 0 12px; background: #414141; border-radius: 4px; font-size: 15px">Medidas<input type="checkbox" checked aria-label="Medidas" style="position: absolute; opacity: 0; width: 1px; height: 1px"><span style="display: block; width: 44px; height: 24px; border-radius: 12px; background: #5c9ff0; position: relative"><span style="position: absolute; right: 3px; top: 3px; width: 18px; height: 18px; border-radius: 9px; background: #fff"></span></span></label>
+<div style="flex: 1"></div>
+<button class="tb-btn" onClick="{{deleteSel}}" disabled="{{noSel}}" style="{{deleteStyle}}"><svg width="16" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 2h6l1 2h5v3H3V4h5zM4 8h16l-1.3 13.2A2 2 0 0 1 16.7 23H7.3a2 2 0 0 1-2-1.8z"></path></svg>Excluir</button>
+<button class="tb-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m15 3 7 7-9 9H7l-4-4zM3 21h18v-2H3z"></path></svg>Limpar</button>
+<button class="tb-btn" style="background: #212936; box-shadow: inset 0 0 0 2px #394150"><svg width="16" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 2v19l5-5 3.5 7 3-1.5-3.5-7H20z"></path></svg>Selecionar</button>
+<button class="tb-btn"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 2h2v10l3.5-3.5 1.4 1.4L12 15.8 6.1 9.9l1.4-1.4L11 12zM3 17h3v3h12v-3h3v6H3z"></path></svg>Exportar</button>
+<button aria-label="Fechar" style="width: 44px; height: 44px; border: 0; background: transparent; color: #fff; display: flex; align-items: center; justify-content: center; margin: 0 8px 0 16px; cursor: pointer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19"></path></svg></button>
+</div>
+
+<!-- Image -->
+<div class="{{imageCls}}" onPointerDown="{{imageDown}}" onPointerMove="{{imageMove}}" onPointerLeave="{{imageLeave}}" style="position: absolute; left: 140px; top: 68px; width: 1180px; height: 576px; background: #f0f0f0; overflow: hidden; touch-action: none">
+<img src="/_blob/253c3c2d1ced86278eefa1682b5deeb7" alt="Radiografia panorâmica" draggable="false" style="position: absolute; left: 1px; top: 1px; width: 1179px; height: 574px; pointer-events: none">
+</div>
+<div style="position: absolute; left: 140px; top: 651px; width: 1180px; height: 15px; background: #6a6f7b; border-radius: 8px"></div>
+
+<!-- Reference axis while rotating -->
+<sc-if value="{{showAxis}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; left: {{axisX}}px; top: {{axisTop}}px; width: 0; height: 240px; border-left: 1px dashed rgba(71,159,248,0.7); pointer-events: none"></div>
+</sc-if>
+
+<!-- Inserted implants -->
+<sc-for list="{{objs}}" as="o" hint-placeholder-count="1">
+<div data-obj="1" onPointerDown="{{o.down}}" onPointerMove="{{onMove}}" onPointerUp="{{endMove}}" onPointerCancel="{{endMove}}" style="{{o.style}}">
+<img src="{{o.src}}" alt="Implante" draggable="false" style="position: absolute; left: 6px; top: 6px; width: calc(100% - 12px); height: calc(100% - 12px); pointer-events: none">
+</div>
+</sc-for>
+
+<!-- Selection overlay of the selected implant -->
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+<div data-sel="1" style="{{selStyle}}">
+<div style="position: absolute; inset: 0; border: 1.5px solid #479ff8; pointer-events: none"></div>
+<div style="position: absolute; left: calc(50% - 0.75px); top: -28px; width: 1.5px; height: 28px; background: #479ff8; pointer-events: none"></div>
+<div class="hnd" onPointerDown="{{rzT.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="left: calc(50% - 12px); top: -13px; pointer-events: auto; cursor: {{rzT.cursor}}"><sc-if value="{{rzT.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzT.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzT.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzL.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="left: -13px; top: calc(50% - 12px); pointer-events: auto; cursor: {{rzL.cursor}}"><sc-if value="{{rzL.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzL.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzL.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzR.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="right: -13px; top: calc(50% - 12px); pointer-events: auto; cursor: {{rzR.cursor}}"><sc-if value="{{rzR.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzR.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzR.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzB.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="left: calc(50% - 12px); bottom: -13px; pointer-events: auto; cursor: {{rzB.cursor}}"><sc-if value="{{rzB.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzB.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzB.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzTL.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="left: -13px; top: -13px; pointer-events: auto; cursor: {{rzTL.cursor}}"><sc-if value="{{rzTL.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzTL.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzTL.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzTR.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="right: -13px; top: -13px; pointer-events: auto; cursor: {{rzTR.cursor}}"><sc-if value="{{rzTR.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzTR.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzTR.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzBL.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="left: -13px; bottom: -13px; pointer-events: auto; cursor: {{rzBL.cursor}}"><sc-if value="{{rzBL.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzBL.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzBL.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<div class="hnd" onPointerDown="{{rzBR.down}}" onPointerMove="{{onResize}}" onPointerUp="{{endResize}}" onPointerCancel="{{endResize}}" style="right: -13px; bottom: -13px; pointer-events: auto; cursor: {{rzBR.cursor}}"><sc-if value="{{rzBR.idle}}" hint-placeholder-val="{{true}}"><span></span></sc-if><sc-if value="{{rzBR.active}}" hint-placeholder-val="{{false}}"><span class="hnd-on" style="{{rzBR.iconStyle}}"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"></path><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"></path><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"></path></svg></span></sc-if></div>
+<button class="rot" aria-label="Girar implante (duplo clique volta a 0°)" onPointerDown="{{startRotate}}" onPointerMove="{{onRotate}}" onPointerUp="{{endRotate}}" onPointerCancel="{{endRotate}}" onPointerEnter="{{hoverOn}}" onPointerLeave="{{hoverOff}}" onDoubleClick="{{resetAngle}}" style="position: absolute; left: calc(50% - 22px); top: -74px; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; pointer-events: auto">
+<span class="rot-ring" style="{{ringStyle}}">
+<sc-if value="{{rotating}}" hint-placeholder-val="{{false}}">
+<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 -2.5)"><path d="M4.94 14.64A9.5 9.5 0 0 1 19.06 14.64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="butt"></path><path d="M1.59 18.36 2.26 12.23 7.62 17.05Z" fill="currentColor" stroke="currentColor" stroke-width="0.8" stroke-linejoin="round"></path><path d="M22.41 18.36 16.38 17.05 21.74 12.23Z" fill="currentColor" stroke="currentColor" stroke-width="0.8" stroke-linejoin="round"></path></g></svg>
+</sc-if>
+<sc-if value="{{idleIcon}}" hint-placeholder-val="{{true}}">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8"></path><path d="M21 3v5h-5"></path></svg>
+</sc-if>
+</span>
+</button>
+</div>
+</sc-if>
+
+<!-- Ghost preview of the armed model (mouse hover / drag attempt) -->
+<sc-if value="{{showGhost}}" hint-placeholder-val="{{false}}">
+<div style="{{ghostStyle}}"><img src="{{ghostSrc}}" alt="" draggable="false" style="width: 100%; height: 100%; display: block"></div>
+<sc-if value="{{showGhostChip}}" hint-placeholder-val="{{false}}"><div style="{{ghostChipStyle}}">{{ghostChip}}</div></sc-if>
+</sc-if>
+
+<!-- Implant model flyout -->
+<sc-if value="{{flyoutOpen}}" hint-placeholder-val="{{true}}">
+<div style="position: absolute; left: 132px; top: 82px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start">
+<div role="group" aria-label="Modelos de implante" style="display: flex; gap: 4px">
+<sc-for list="{{models}}" as="m" hint-placeholder-count="5">
+<button class="mtile" aria-label="{{m.name}}" aria-pressed="{{m.on}}" onPointerDown="{{m.down}}" onPointerMove="{{tileMove}}" onPointerUp="{{tileUp}}" onPointerCancel="{{tileUp}}" style="{{m.tileStyle}}">
+<img src="{{m.thumb}}" alt="" draggable="false" style="{{m.thumbStyle}}">
+<sc-if value="{{m.on}}" hint-placeholder-val="{{false}}">
+<span style="position: absolute; right: 5px; top: 5px; width: 18px; height: 18px; border-radius: 9px; background: #479ff8; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5"></path></svg></span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<!-- "Tap to insert" balloon under the selected model (until the image is tapped) -->
+<sc-if value="{{showBalloon}}" hint-placeholder-val="{{false}}">
+<div role="status" style="{{balloonStyle}}">
+<span style="{{balloonTipStyle}}"></span>
+<span style="height: 32px; padding: 0 12px; display: flex; align-items: center; border-radius: 6px; background: rgba(18,18,18,0.92); color: #fff; font: 500 14px Roboto, sans-serif; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.4)">Toque na imagem para inserir</span>
+</div>
+</sc-if>
+
+<!-- Degree / hint pill (stays upright) -->
+<sc-if value="{{showPill}}" hint-placeholder-val="{{false}}">
+<div class="pill" style="{{pillStyle}}">{{pillText}}</div>
+</sc-if>
+
+<!-- Toast near the tap -->
+<sc-if value="{{showToast}}" hint-placeholder-val="{{false}}">
+<div role="alert" style="{{toastStyle}}">{{toastText}}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"snapStep":{"editor":"enum","options":["45","90","off"],"default":"45","section":"Rotação"},"keepModeAfterInsert":{"editor":"boolean","default":false,"section":"Inserir implante"},"$preview":{"width":1320,"height":780}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      objs: [{ id: 1, m: 1, cx: 577, cy: 438, w: 57, h: 109, angle: 0 }],
+      nextId: 2, selId: null,
+      flyoutOpen: true, model: 1,
+      rotating: false, resizing: false, handle: null, hover: false, snapped: false,
+      ghost: null, tileDrag: null, balloon: true, nudge: false, warn: false, toast: null
+    };
+    this.drag = null;
+    this.timers = {};
+  }
+  componentWillUnmount() { Object.values(this.timers).forEach(clearTimeout); }
+  models() {
+    return [
+      { id: 1, name: 'Modelo 1', thumb: '/_blob/739a4b9efd87cee2cc4d32cf2fdaf6b0', tw: 21, th: 46, w: 45, h: 97 },
+      { id: 2, name: 'Modelo 2', thumb: '/_blob/0d8b94094614029f2d9032b673076cb2', tw: 13, th: 26, w: 28, h: 55 },
+      { id: 3, name: 'Modelo 3', thumb: '/_blob/b2afed17f7437edda69acadc6772e5b5', tw: 21, th: 42, w: 44, h: 90 },
+      { id: 4, name: 'Modelo 4', thumb: '/_blob/c233bf784586fb954a340ab265a4c5d4', tw: 18, th: 44, w: 39, h: 94 },
+      { id: 5, name: 'Modelo 5', thumb: '/_blob/e52c7cf92e5b76068830077ccd0b4579', tw: 19, th: 46, w: 40, h: 99 }
+    ];
+  }
+  later(key, ms, fn) { clearTimeout(this.timers[key]); this.timers[key] = setTimeout(fn, ms); }
+  norm(a) { a = ((a % 360) + 540) % 360 - 180; return a === -180 ? 180 : a; }
+  stageInfo(el) { const st = el.closest('[data-stage]'); const rect = st.getBoundingClientRect(); return { rect, scale: rect.width / 1320 }; }
+  toStage(e, el) { const i = this.stageInfo(el); return { x: (e.clientX - i.rect.left) / i.scale, y: (e.clientY - i.rect.top) / i.scale }; }
+  sel() { return this.state.objs.find(o => o.id === this.state.selId) || null; }
+  patchSel(p) { this.setState({ objs: this.state.objs.map(o => o.id === this.state.selId ? { ...o, ...p } : o) }); }
+  pointerAngle(e, el) {
+    const r = el.getBoundingClientRect();
+    return Math.atan2(e.clientX - (r.left + r.width / 2), -(e.clientY - (r.top + r.height / 2))) * 180 / Math.PI;
+  }
+  cursorFor(base, angle) {
+    const d = ((base + angle) % 180 + 180) % 180;
+    return ['ns-resize', 'nesw-resize', 'ew-resize', 'nwse-resize'][Math.round(d / 45) % 4];
+  }
+  showToast(text, x, y, warn) {
+    this.setState({ toast: { text, x, y, warn } });
+    this.later('toast', 2600, () => this.setState({ toast: null }));
+  }
+  renderVals() {
+    const s = this.state, M = this.models();
+    const model = M.find(m => m.id === s.model) || null;
+    const armed = s.flyoutOpen && !!model;
+    const o = this.sel();
+    const snapStep = this.props.snapStep ?? '45';
+
+    // ---------- objects ----------
+    const objs = s.objs.map(ob => ({
+      src: M.find(m => m.id === ob.m).thumb,
+      style: 'position:absolute;left:' + (ob.cx - ob.w / 2) + 'px;top:' + (ob.cy - ob.h / 2) + 'px;width:' + ob.w + 'px;height:' + ob.h + 'px;transform:rotate(' + ob.angle + 'deg);transform-origin:50% 50%;cursor:move;touch-action:none',
+      down: (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        const i = this.stageInfo(e.currentTarget);
+        e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId);
+        this.drag = { kind: 'move', id: ob.id, x: e.clientX, y: e.clientY, cx: ob.cx, cy: ob.cy, scale: i.scale };
+        this.setState({ selId: ob.id, ghost: null });
+      }
+    }));
+
+    // ---------- selection overlay ----------
+    let selVals = { hasSel: false, selStyle: '', showAxis: false, axisX: 0, axisTop: 0, showPill: false, pillText: '', pillStyle: '' };
+    const rz = {};
+    const cornerFactory = (sx, sy) => {
+      if (!o) return { cursor: 'default', idle: true, active: false, iconStyle: '', down: () => {} };
+      const ca = Math.atan2(o.w / 2, o.h / 2) * 180 / Math.PI;
+      const base = sx === 0 ? 0 : sy === 0 ? 90 : (sx * sy < 0 ? ca : 180 - ca);
+      const key = sx + ',' + sy;
+      const on = s.resizing && s.handle === key;
+      return {
+        active: on, idle: !on,
+        iconStyle: 'position:absolute;left:-4px;top:-4px;width:32px;height:32px;border-radius:16px;box-sizing:border-box;border:1.5px solid #479ff8;background:#479ff8;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.45);transform:rotate(' + (base - 90) + 'deg);pointer-events:none',
+        cursor: this.cursorFor(base, o.angle),
+        down: (e) => {
+          e.stopPropagation(); e.preventDefault();
+          if (e.button !== undefined && e.button !== 0) return;
+          const i = this.stageInfo(e.currentTarget);
+          const r2 = o.angle * Math.PI / 180, c = Math.cos(r2), sn = Math.sin(r2);
+          const lx = -sx * o.w / 2, ly = -sy * o.h / 2;
+          e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId);
+          this.drag = { kind: 'resize', sx, sy, w0: o.w, h0: o.h, anchor: { x: o.cx + lx * c - ly * sn, y: o.cy + lx * sn + ly * c }, ...i };
+          this.setState({ resizing: true, handle: key });
+        }
+      };
+    };
+    [['T', 0, -1], ['B', 0, 1], ['L', -1, 0], ['R', 1, 0], ['TL', -1, -1], ['TR', 1, -1], ['BL', -1, 1], ['BR', 1, 1]].forEach(([k, sx, sy]) => { rz['rz' + k] = cornerFactory(sx, sy); });
+    if (o) {
+      const R = o.h / 2 + 44, rad = o.angle * Math.PI / 180;
+      const hx = o.cx + R * Math.sin(rad), hy = o.cy - R * Math.cos(rad);
+      const deg = Math.round(o.angle);
+      selVals = {
+        hasSel: true,
+        selStyle: 'position:absolute;left:' + (o.cx - o.w / 2) + 'px;top:' + (o.cy - o.h / 2) + 'px;width:' + o.w + 'px;height:' + o.h + 'px;transform:rotate(' + o.angle + 'deg);transform-origin:50% 50%;pointer-events:none',
+        showAxis: s.rotating, axisX: o.cx, axisTop: o.cy - 120,
+        showPill: s.rotating || s.hover,
+        pillText: s.rotating ? (deg < 0 ? '−' + Math.abs(deg) : String(deg)) + '°' : 'Girar',
+        pillStyle: 'position:absolute;left:' + Math.min(1250, Math.max(148, hx + 22)) + 'px;top:' + Math.min(608, Math.max(76, hy - 15)) + 'px;height:30px;padding:0 10px;display:flex;align-items:center;border-radius:6px;background:' + (s.rotating && s.snapped ? '#479ff8' : 'rgba(18,18,18,0.92)') + ';color:#fff;font:500 14px \'Roboto Mono\',monospace;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.4)'
+      };
+    }
+
+    // ---------- model flyout ----------
+    const models = M.map(m => {
+      const on = s.model === m.id;
+      const pulse = s.warn;
+      return {
+        name: m.name + (on ? ' (selecionado)' : ''), thumb: m.thumb, on,
+        thumbStyle: 'width:' + m.tw + 'px;height:' + m.th + 'px;pointer-events:none',
+        tileStyle: on
+          ? 'background:#2c3f57;box-shadow:inset 0 0 0 2px #479ff8'
+          : 'background:#394150;box-shadow:' + (pulse ? 'inset 0 0 0 2px #f2b63d' : 'inset 0 0 0 0 transparent'),
+        down: (e) => {
+          if (e.button !== undefined && e.button !== 0) return;
+          e.preventDefault();
+          e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId);
+          this.drag = { kind: 'tile', x: e.clientX, y: e.clientY, el: e.currentTarget, moved: false };
+          // Clicking the selected model again KEEPS it selected; another model just swaps.
+          this.setState({ model: m.id, warn: false, nudge: false, balloon: true });
+        }
+      };
+    });
+    const ghostModel = model || M[0];
+    let showGhost = false, gx = 0, gy = 0, ghostChip = '';
+    if (s.tileDrag) { showGhost = true; gx = s.tileDrag.x; gy = s.tileDrag.y; ghostChip = 'Toque na imagem para posicionar o item'; }
+    else if (armed && s.ghost) { showGhost = true; gx = s.ghost.x; gy = s.ghost.y; ghostChip = ''; }
+    const hint = armed
+      ? { strong: model.name + ' selecionado', rest: ' · Toque na imagem para inserir' }
+      : { strong: 'Nenhum modelo selecionado', rest: ' · Escolha um modelo acima para inserir' };
+    const hintBg = s.nudge ? '#479ff8' : (!armed && s.warn ? '#5a4318' : 'rgba(18,18,18,0.92)');
+    const hintBorder = !armed && s.warn ? '#f2b63d' : 'transparent';
+
+    const t = s.toast;
+    const bCenter = 132 + ((model ? model.id : 1) - 1) * 99 + 47.5, bLeft = Math.max(148, bCenter - 110);
+    return {
+      ...selVals, ...rz,
+      objs,
+      rotating: s.rotating, idleIcon: !s.rotating,
+      stageCls: s.rotating ? 'stage-rotating' : '',
+      ringStyle: 'display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:16px;box-sizing:border-box;border:1.5px solid #479ff8;background:' + (s.rotating || s.hover ? '#479ff8' : '#ffffff') + ';color:' + (s.rotating || s.hover ? '#ffffff' : '#479ff8') + ';box-shadow:0 1px 4px rgba(0,0,0,0.45)',
+      flyoutOpen: s.flyoutOpen,
+      toolTileStyle: 'width:92px;height:64px;' + (s.flyoutOpen ? 'background:#212936;box-shadow:inset 0 0 0 2px #479ff8' : ''),
+      toolChevStyle: s.flyoutOpen ? 'background:#212936' : '',
+      models, armed,
+      noSel: !o,
+      deleteStyle: o ? '' : 'opacity:0.45;cursor:default',
+      deleteSel: () => { if (!o) return; this.setState({ objs: s.objs.filter(x => x.id !== o.id), selId: null, hover: false }); },
+      showBalloon: armed && s.balloon,
+      balloonStyle: 'position:absolute;left:' + bLeft + 'px;top:152px;pointer-events:none;display:flex;flex-direction:column;align-items:flex-start',
+      balloonTipStyle: 'width:0;height:0;margin-left:' + (bCenter - bLeft - 7) + 'px;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid rgba(18,18,18,0.92)',
+      toolThumb: (!model || model.id === 1) ? '/_blob/d53dfafa3c6540338473ebcb0405646d' : model.thumb,
+      toolThumbStyle: (!model || model.id === 1) ? 'width:82px;height:58px' : 'width:' + model.tw + 'px;height:' + model.th + 'px',
+      imageCls: armed ? 'img-armed' : '',
+      hintStyle: 'display:flex;align-items:center;gap:10px;min-height:36px;padding:4px 6px 4px 12px;box-sizing:border-box;border-radius:6px;background:' + hintBg + ';border:1px solid ' + hintBorder + ';color:#fff;font:400 14px Roboto,sans-serif;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:background-color 160ms ease',
+      hintIconOk: armed, hintIconWarn: !armed,
+      hintStrong: hint.strong, hintRest: hint.rest,
+      showGhost,
+      ghostSrc: ghostModel.thumb,
+      ghostStyle: 'position:absolute;left:' + (gx - ghostModel.w / 2) + 'px;top:' + (gy - ghostModel.h / 2) + 'px;width:' + ghostModel.w + 'px;height:' + ghostModel.h + 'px;opacity:0.6;pointer-events:none;filter:drop-shadow(0 0 0 #479ff8)',
+      ghostChip, showGhostChip: !!s.tileDrag,
+      ghostChipStyle: 'position:absolute;left:' + Math.min(1100, gx + ghostModel.w / 2 + 10) + 'px;top:' + (gy - 14) + 'px;height:28px;padding:0 10px;display:flex;align-items:center;border-radius:6px;background:' + (s.tileDrag ? '#5a4318' : 'rgba(18,18,18,0.92)') + ';color:#fff;font:500 13px Roboto,sans-serif;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.4)',
+      showToast: !!t,
+      toastText: t ? t.text : '',
+      toastStyle: t ? 'position:absolute;left:' + Math.min(1000, Math.max(150, t.x - 150)) + 'px;top:' + Math.min(600, Math.max(80, t.y + 18)) + 'px;max-width:300px;padding:8px 12px;border-radius:6px;background:' + (t.warn ? '#5a4318' : 'rgba(18,18,18,0.92)') + ';border:1px solid ' + (t.warn ? '#f2b63d' : 'transparent') + ';color:#fff;font:400 14px/1.35 Roboto,sans-serif;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.4)' : '',
+
+      // ---------- handlers ----------
+      toggleFlyout: () => {
+        const open = !s.flyoutOpen;
+        this.setState({ flyoutOpen: open, warn: false, nudge: false, ghost: null, balloon: open });
+      },
+      cancelModel: () => this.setState({ model: null, ghost: null, nudge: false }),
+      tileMove: (e) => {
+        const d = this.drag; if (!d || d.kind !== 'tile') return;
+        if (!d.moved && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 8) return;
+        d.moved = true;
+        this.setState({ tileDrag: this.toStage(e, d.el) });
+      },
+      tileUp: () => {
+        const d = this.drag; if (!d || d.kind !== 'tile') return;
+        this.drag = null;
+        if (d.moved) {
+          // Drag attempt: explain the click → click flow, keep the model armed.
+          this.setState({ tileDrag: null, nudge: true });
+          this.later('nudge', 2600, () => this.setState({ nudge: false }));
+        }
+      },
+      imageMove: (e) => {
+        if (e.pointerType !== 'mouse' || !armed) { if (s.ghost) this.setState({ ghost: null }); return; }
+        this.setState({ ghost: this.toStage(e, e.currentTarget) });
+      },
+      imageLeave: () => { if (s.ghost) this.setState({ ghost: null }); },
+      imageDown: (e) => {
+        e.preventDefault();
+        if (this.drag) return;
+        const p = this.toStage(e, e.currentTarget);
+        if (s.balloon) this.setState({ balloon: false });
+        if (armed) {
+          const id = s.nextId;
+          const ob = { id, m: model.id, cx: p.x, cy: p.y, w: model.w + 12, h: model.h + 12, angle: 0 };
+          const keep = this.props.keepModeAfterInsert ?? false;
+          this.setState({ objs: [...s.objs, ob], nextId: id + 1, selId: id, flyoutOpen: keep, ghost: null, nudge: false, warn: false });
+        } else if (s.flyoutOpen) {
+          this.setState({ selId: null, warn: true, ghost: null });
+          this.showToast('Nenhum modelo selecionado. Escolha um modelo de implante acima e toque na imagem.', p.x, p.y, true);
+          this.later('warn', 2600, () => this.setState({ warn: false }));
+        } else {
+          this.setState({ selId: null, hover: false });
+        }
+      },
+      onMove: (e) => {
+        const d = this.drag; if (!d || d.kind !== 'move') return;
+        e.preventDefault();
+        const cx = Math.min(1310, Math.max(150, d.cx + (e.clientX - d.x) / d.scale));
+        const cy = Math.min(634, Math.max(78, d.cy + (e.clientY - d.y) / d.scale));
+        this.setState({ objs: this.state.objs.map(x => x.id === d.id ? { ...x, cx, cy } : x) });
+      },
+      endMove: () => { if (this.drag && this.drag.kind === 'move') this.drag = null; },
+      onResize: (e) => {
+        const d = this.drag; if (!d || d.kind !== 'resize') return;
+        e.stopPropagation(); e.preventDefault();
+        const cur = this.sel(); if (!cur) return;
+        const p = { x: (e.clientX - d.rect.left) / d.scale, y: (e.clientY - d.rect.top) / d.scale };
+        const r2 = cur.angle * Math.PI / 180, c = Math.cos(r2), sn = Math.sin(r2);
+        const vx = p.x - d.anchor.x, vy = p.y - d.anchor.y;
+        const lx = vx * c + vy * sn, ly = -vx * sn + vy * c;
+        let w = d.w0, h = d.h0;
+        if (d.sx && d.sy) {
+          let k = (lx * d.sx * d.w0 + ly * d.sy * d.h0) / (d.w0 * d.w0 + d.h0 * d.h0);
+          k = Math.max(Math.max(20 / d.w0, 40 / d.h0), Math.min(3, k));
+          w = d.w0 * k; h = d.h0 * k;
+        } else if (d.sx) { w = Math.min(200, Math.max(20, lx * d.sx)); }
+        else { h = Math.min(330, Math.max(40, ly * d.sy)); }
+        const hx = d.sx * w / 2, hy = d.sy * h / 2;
+        this.patchSel({ w, h, cx: d.anchor.x + hx * c - hy * sn, cy: d.anchor.y + hx * sn + hy * c });
+      },
+      endResize: (e) => {
+        if (e) e.stopPropagation();
+        if (this.drag && this.drag.kind === 'resize') { this.drag = null; this.setState({ resizing: false, handle: null }); }
+      },
+      startRotate: (e) => {
+        e.stopPropagation(); e.preventDefault();
+        if (e.button !== undefined && e.button !== 0) return;
+        const el = e.currentTarget.closest('[data-sel]');
+        const cur = this.sel(); if (!cur) return;
+        e.currentTarget.setPointerCapture && e.currentTarget.setPointerCapture(e.pointerId);
+        this.drag = { kind: 'rotate', el, start: this.pointerAngle(e, el), base: cur.angle };
+        this.setState({ rotating: true, snapped: false });
+      },
+      onRotate: (e) => {
+        const d = this.drag; if (!d || d.kind !== 'rotate') return;
+        e.stopPropagation(); e.preventDefault();
+        let a = this.norm(d.base + this.pointerAngle(e, d.el) - d.start);
+        let snapped = false;
+        if (e.shiftKey) { a = Math.round(a / 15) * 15; snapped = true; }
+        else if (snapStep !== 'off') {
+          const step = Number(snapStep), near = Math.round(a / step) * step;
+          if (Math.abs(a - near) <= 4) { a = near; snapped = true; }
+        }
+        this.setState({ snapped });
+        this.patchSel({ angle: this.norm(a) });
+      },
+      endRotate: (e) => {
+        if (e) e.stopPropagation();
+        if (this.drag && this.drag.kind === 'rotate') { this.drag = null; this.setState({ rotating: false, hover: false }); }
+      },
+      hoverOn: (e) => { if (e.pointerType === 'mouse') this.setState({ hover: true }); },
+      hoverOff: () => this.setState({ hover: false }),
+      resetAngle: (e) => { e.stopPropagation(); this.patchSel({ angle: 0 }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
