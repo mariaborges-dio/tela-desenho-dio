@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor de imagem — implantes: inserir, girar, redimensionar (protótipo de referência)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens dos estados novos ===== */
+:root{
+  --sel-blue:#479ff8;           /* azul de seleção / ativo (já existente) */
+  --tile:#394150;               /* fundo dos botões (já existente) */
+  --tile-hover:#465063;
+  --tile-selected:#2c3f57;      /* fundo do modelo selecionado */
+  --tool-active:#212936;        /* ferramenta aberta na barra lateral */
+  --dark-pill:rgba(18,18,18,.92);/* rótulos e balões */
+  --shadow-ctrl:0 1px 4px rgba(0,0,0,.45);
+  --shadow-pill:0 2px 8px rgba(0,0,0,.4);
+}
+html,body{margin:0;background:#060606}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh}
+#fit{transform-origin:0 0}
+
+/* ===== Tela existente (inalterada) ===== */
+.stage{position:relative;width:1320px;height:780px;overflow:hidden;background:#282828;font-family:Roboto,sans-serif;color:#fff;user-select:none;-webkit-user-select:none;touch-action:none}
+.tb-btn{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;border:0;border-radius:4px;background:var(--tile);color:#fff;font:400 18px Roboto,sans-serif;cursor:pointer}
+.tb-btn:hover{background:var(--tile-hover)}
+.tb-btn:disabled{opacity:.45;cursor:default}
+.tb-btn:disabled:hover{background:var(--tile)}
+.side-tile{display:flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:var(--tile);padding:0;cursor:pointer;width:92px;height:64px}
+.side-tile:hover{background:var(--tile-hover)}
+.chev{display:flex;align-items:center;justify-content:center;width:20px;height:64px;border:0;border-radius:4px;background:var(--tile);color:#fff;padding:0;cursor:pointer;font-size:18px}
+.row{display:flex;gap:4px}
+
+/* NOVO: ferramenta Implante aberta (mostra o último modelo escolhido) */
+.side-tile.is-open{background:var(--tool-active);box-shadow:inset 0 0 0 2px var(--sel-blue)}
+.chev.is-open{background:var(--tool-active)}
+
+/* ===== NOVO: lista de modelos ===== */
+.flyout{position:absolute;left:132px;top:82px;display:none;gap:4px}
+.flyout.open{display:flex}
+.mtile{position:relative;display:flex;align-items:center;justify-content:center;width:95px;height:62px;border:0;border-radius:4px;padding:0;cursor:pointer;touch-action:none;background:var(--tile);transition:background-color 120ms ease,box-shadow 120ms ease}
+.mtile:hover{filter:brightness(1.12)}
+.mtile img{pointer-events:none}
+.mtile .check{display:none;position:absolute;right:5px;top:5px;width:18px;height:18px;border-radius:9px;background:var(--sel-blue);align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.mtile.is-selected{background:var(--tile-selected);box-shadow:inset 0 0 0 2px var(--sel-blue)}
+.mtile.is-selected .check{display:flex}
+
+/* Balão "Toque na imagem para inserir" (abaixo do modelo selecionado) */
+.balloon{position:absolute;top:152px;display:none;flex-direction:column;align-items:flex-start;pointer-events:none}
+.balloon.show{display:flex}
+.balloon .tip{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid var(--dark-pill)}
+.balloon .txt{height:32px;padding:0 12px;display:flex;align-items:center;border-radius:6px;background:var(--dark-pill);color:#fff;font:500 14px Roboto,sans-serif;white-space:nowrap;box-shadow:var(--shadow-pill)}
+
+/* Prévia translúcida (desktop: segue o mouse; arraste: segue o dedo) */
+.ghost{position:absolute;opacity:.6;pointer-events:none;display:none}
+.ghost img{width:100%;height:100%;display:block}
+.ghost.show{display:block}
+.chip{position:absolute;height:28px;padding:0 10px;display:none;align-items:center;border-radius:6px;background:var(--dark-pill);color:#fff;font:500 13px Roboto,sans-serif;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-pill)}
+.chip.show{display:flex}
+.image.armed{cursor:crosshair}
+
+/* ===== NOVO: implantes na imagem ===== */
+.obj{position:absolute;cursor:move;touch-action:none;transform-origin:50% 50%}
+.obj img{position:absolute;left:6px;top:6px;width:calc(100% - 12px);height:calc(100% - 12px);pointer-events:none}
+
+/* Camada de seleção do implante selecionado */
+.sel{position:absolute;transform-origin:50% 50%;pointer-events:none;display:none}
+.sel.show{display:block}
+.sel-frame{position:absolute;inset:0;border:1.5px solid var(--sel-blue)}
+.stem{position:absolute;left:calc(50% - .75px);top:-28px;width:1.5px;height:28px;background:var(--sel-blue)}
+
+/* Pontos de redimensionar: visual 7px, área de toque 24px */
+.hnd{position:absolute;width:24px;height:24px;display:flex;align-items:center;justify-content:center;touch-action:none;pointer-events:auto}
+.hnd .sq{display:block;width:7px;height:7px;background:#fff;border:1.5px solid var(--sel-blue)}
+.hnd:hover .sq{background:var(--sel-blue)}
+.hnd .on{display:none;position:absolute;left:-4px;top:-4px;width:32px;height:32px;border-radius:16px;box-sizing:border-box;border:1.5px solid var(--sel-blue);background:var(--sel-blue);color:#fff;align-items:center;justify-content:center;box-shadow:var(--shadow-ctrl);pointer-events:none}
+.hnd.is-active .sq{display:none}
+.hnd.is-active .on{display:flex}
+
+/* Botão de girar: visual 32px, área de toque 44px */
+.rot{position:absolute;left:calc(50% - 22px);top:-74px;width:44px;height:44px;padding:0;border:0;background:transparent;display:flex;align-items:center;justify-content:center;touch-action:none;pointer-events:auto;cursor:url(assets/cursor-rotate.svg) 14 14, grab}
+.rot-ring{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:16px;box-sizing:border-box;border:1.5px solid var(--sel-blue);background:#fff;color:var(--sel-blue);box-shadow:var(--shadow-ctrl);transition:background-color 120ms ease,color 120ms ease}
+.rot .ic-rotating{display:none}
+.rot.is-hover .rot-ring,.rot.is-active .rot-ring{background:var(--sel-blue);color:#fff}
+.rot.is-active .ic-idle{display:none}
+.rot.is-active .ic-rotating{display:block}
+.stage.is-rotating,.stage.is-rotating *{cursor:url(assets/cursor-rotate.svg) 14 14, grabbing !important}
+
+/* Rótulo de graus — sempre na horizontal */
+.pill{position:absolute;display:none;height:30px;padding:0 10px;align-items:center;border-radius:6px;background:var(--dark-pill);color:#fff;font:500 14px 'Roboto Mono',monospace;white-space:nowrap;pointer-events:none;box-shadow:var(--shadow-pill);transition:background-color 120ms ease}
+.pill.show{display:flex}
+.pill.snapped{background:var(--sel-blue)}
+.axis{position:absolute;width:0;height:240px;border-left:1px dashed rgba(71,159,248,.7);pointer-events:none;display:none}
+.axis.show{display:block}
+</style>
+</head>
+<body>
+<div id="fit">
+<div class="stage" id="stage">
+
+  <!-- Barra lateral (existente) -->
+  <div style="position:absolute;left:10px;top:8px;width:116px;display:flex;flex-direction:column;gap:8px">
+    <div class="row"><button class="side-tile" aria-label="Dente"><img src="assets/tool-dente.png" alt="" style="width:82px;height:58px"></button><button class="chev" aria-label="Mais">›</button></div>
+    <div class="row"><button class="side-tile" id="tool-implant" aria-label="Implante" aria-expanded="true"><img id="tool-implant-img" src="assets/tool-implante.png" alt="" style="width:82px;height:58px"></button><button class="chev" id="tool-implant-chev" aria-label="Modelos de implante">›</button></div>
+    <div class="row"><button class="side-tile" aria-label="Prótese"><img src="assets/tool-protese.png" alt="" style="width:82px;height:58px"></button><button class="chev" aria-label="Mais">›</button></div>
+    <div class="row"><button class="side-tile" aria-label="Enxerto"><img src="assets/tool-enxerto.png" alt="" style="width:82px;height:58px"></button><button class="chev" aria-label="Mais">›</button></div>
+    <div class="row"><button class="side-tile" aria-label="Pino"><img src="assets/tool-pino.png" alt="" style="width:82px;height:58px"></button><button class="chev" aria-label="Mais">›</button></div>
+    <div class="row"><button class="side-tile" aria-label="Contenção"><img src="assets/tool-sutura.png" alt="" style="width:82px;height:58px"></button><button class="chev" aria-label="Mais">›</button></div>
+    <button class="side-tile" aria-label="Remover dente" style="width:116px"><img src="assets/tool-remover.png" alt="" style="width:106px;height:58px"></button>
+    <div style="height:12px"></div>
+    <button class="tb-btn" style="height:40px;justify-content:center;font-size:17px">Texto</button>
+    <div class="row"><button class="tb-btn" style="width:92px;height:64px;justify-content:center;font-size:17px;padding:0">Medir</button><button class="chev" aria-label="Mais">›</button></div>
+    <div class="row" style="gap:8px"><button class="tb-btn" style="width:52px;height:40px;padding:0;justify-content:center" aria-label="Desfazer">↺</button><button class="tb-btn" style="width:52px;height:40px;padding:0;justify-content:center" aria-label="Refazer">↻</button></div>
+    <button class="tb-btn" style="width:112px;height:40px;justify-content:center;font-size:17px">Lápis</button>
+  </div>
+  <div style="position:absolute;left:137px;top:6px;width:4px;height:774px;background:#6f6f6f;border-radius:2px;pointer-events:none"></div>
+
+  <!-- Barra superior (existente) -->
+  <div style="position:absolute;left:148px;top:8px;right:0;height:52px;display:flex;align-items:center;gap:8px">
+    <span style="font-weight:700;font-size:20px;margin-right:8px">Filtros:</span>
+    <button class="tb-btn" style="background:#414141;height:52px">Imagem sem traçados ▾</button>
+    <div style="flex:1"></div>
+    <!-- NOVO: Excluir remove o implante selecionado; desabilitado sem seleção -->
+    <button class="tb-btn" id="btn-delete">Excluir</button>
+    <button class="tb-btn">Limpar</button>
+    <button class="tb-btn" style="background:#212936;box-shadow:inset 0 0 0 2px #394150">Selecionar</button>
+    <button class="tb-btn">Exportar</button>
+    <button class="tb-btn" aria-label="Fechar" style="background:transparent;margin:0 8px">✕</button>
+  </div>
+
+  <!-- Imagem -->
+  <div class="image" id="image" style="position:absolute;left:140px;top:68px;width:1180px;height:576px;background:#f0f0f0;overflow:hidden;touch-action:none">
+    <img src="assets/radiografia-exemplo.jpg" alt="Radiografia panorâmica" draggable="false" style="position:absolute;left:1px;top:1px;width:1179px;height:574px;pointer-events:none">
+  </div>
+  <div style="position:absolute;left:140px;top:651px;width:1180px;height:15px;background:#6a6f7b;border-radius:8px"></div>
+
+  <div class="axis" id="axis"></div>
+  <div id="objs"></div>
+
+  <!-- Camada de seleção (segue o implante selecionado) -->
+  <div class="sel" id="sel">
+    <div class="sel-frame"></div>
+    <div class="stem"></div>
+    <!-- data-sx / data-sy: -1, 0, 1 = lado do ponto -->
+    <div class="hnd" data-sx="0"  data-sy="-1" style="left:calc(50% - 12px);top:-13px"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="-1" data-sy="0"  style="left:-13px;top:calc(50% - 12px)"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="1"  data-sy="0"  style="right:-13px;top:calc(50% - 12px)"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="0"  data-sy="1"  style="left:calc(50% - 12px);bottom:-13px"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="-1" data-sy="-1" style="left:-13px;top:-13px"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="1"  data-sy="-1" style="right:-13px;top:-13px"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="-1" data-sy="1"  style="left:-13px;bottom:-13px"><span class="sq"></span><span class="on"></span></div>
+    <div class="hnd" data-sx="1"  data-sy="1"  style="right:-13px;bottom:-13px"><span class="sq"></span><span class="on"></span></div>
+    <button class="rot" id="rot" aria-label="Girar implante (duplo clique volta a 0°)">
+      <span class="rot-ring">
+        <svg class="ic-idle" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.9 1 6.7 2.7L21 8"/><path d="M21 3v5h-5"/></svg>
+        <svg class="ic-rotating" width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><g transform="translate(0 -2.5)"><path d="M4.94 14.64A9.5 9.5 0 0 1 19.06 14.64" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M1.59 18.36 2.26 12.23 7.62 17.05Z" fill="currentColor" stroke="currentColor" stroke-width=".8" stroke-linejoin="round"/><path d="M22.41 18.36 16.38 17.05 21.74 12.23Z" fill="currentColor" stroke="currentColor" stroke-width=".8" stroke-linejoin="round"/></g></svg>
+      </span>
+    </button>
+  </div>
+
+  <div class="ghost" id="ghost"><img id="ghost-img" alt=""></div>
+  <div class="chip" id="chip">Toque na imagem para posicionar o item</div>
+
+  <!-- Lista de modelos de implante -->
+  <div class="flyout open" id="flyout" role="group" aria-label="Modelos de implante"></div>
+  <div class="balloon" id="balloon" role="status"><span class="tip"></span><span class="txt">Toque na imagem para inserir</span></div>
+
+  <div class="pill" id="pill"></div>
+</div>
+</div>
+
+<template id="arrow-tpl">
+  <!-- Seta dupla reta (redimensionar); girada conforme o ponto -->
+  <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12h10" stroke="currentColor" stroke-width="2.4" fill="none"/><path d="M1.8 12 8.2 6.8v10.4Z" fill="currentColor"/><path d="M22.2 12 15.8 6.8v10.4Z" fill="currentColor"/></svg>
+</template>
+
+<script>
+/* =====================================================================
+   Protótipo de referência — NÃO é código de produção.
+   Mostra o comportamento esperado; adaptar ao canvas/stack real.
+   ===================================================================== */
+const CFG = {
+  STAGE_W: 1320,
+  PAD: 6,                        // folga da caixa de seleção em volta da imagem do implante
+  HANDLE_DIST: 44,               // distância do rótulo de graus em relação à borda superior
+  SNAP_STEP: 45, SNAP_TOL: 4,    // encaixe em múltiplos de 45° (±4°)
+  SHIFT_STEP: 15,                // Shift = passos de 15°
+  DRAG_THRESHOLD: 8,             // px para considerar "tentativa de arrastar" um modelo
+  KEEP_MODE_AFTER_INSERT: false, // true = continua no modo inserir depois de inserir
+  MIN_W: 20, MAX_W: 200, MIN_H: 40, MAX_H: 330,
+  BOUNDS: { x0: 150, x1: 1310, y0: 78, y1: 634 }, // área da imagem (centro do objeto)
+  FLYOUT: { left: 132, tileW: 95, gap: 4 }
+};
+// Modelos: thumb = tamanho na lista; w/h = tamanho da imagem inserida (sem a folga)
+const MODELS = [
+  { id: 1, name: 'Modelo 1', src: 'assets/modelo-1.png', tw: 21, th: 46, w: 45, h: 97 },
+  { id: 2, name: 'Modelo 2', src: 'assets/modelo-2.png', tw: 13, th: 26, w: 28, h: 55 },
+  { id: 3, name: 'Modelo 3', src: 'assets/modelo-3.png', tw: 21, th: 42, w: 44, h: 90 },
+  { id: 4, name: 'Modelo 4', src: 'assets/modelo-4.png', tw: 18, th: 44, w: 39, h: 94 },
+  { id: 5, name: 'Modelo 5', src: 'assets/modelo-5.png', tw: 19, th: 46, w: 40, h: 99 }
+];
+
+const S = {
+  objs: [{ id: 1, m: 1, cx: 577, cy: 438, w: 57, h: 109, angle: 0 }],
+  nextId: 2, selId: null,
+  flyoutOpen: true, model: 1, balloon: true,   // ao abrir: último modelo já selecionado + balão
+  ghost: null, tileDrag: null,
+  rotating: false, hover: false, snapped: false, resizing: false, handle: null
+};
+let drag = null;
+
+const $ = id => document.getElementById(id);
+const stage=$('stage'), image=$('image'), objsEl=$('objs'), sel=$('sel'), rot=$('rot'), pill=$('pill'), axis=$('axis');
+const flyout=$('flyout'), balloon=$('balloon'), ghost=$('ghost'), chip=$('chip');
+const handles=[...sel.querySelectorAll('.hnd')];
+handles.forEach(h => h.querySelector('.on').innerHTML = $('arrow-tpl').innerHTML);
+
+const model = () => MODELS.find(m => m.id === S.model) || null;
+const armed = () => S.flyoutOpen && !!model();
+const selObj = () => S.objs.find(o => o.id === S.selId) || null;
+const patchSel = p => { const o = selObj(); if (o) Object.assign(o, p); };
+const norm = a => { a = ((a % 360) + 540) % 360 - 180; return a === -180 ? 180 : a; };
+const stageInfo = () => { const r = stage.getBoundingClientRect(); return { rect:r, scale:r.width / CFG.STAGE_W }; };
+const toStage = (e, i = stageInfo()) => ({ x:(e.clientX - i.rect.left) / i.scale, y:(e.clientY - i.rect.top) / i.scale });
+function pointerAngle(e){ const r=sel.getBoundingClientRect(); return Math.atan2(e.clientX-(r.left+r.width/2), -(e.clientY-(r.top+r.height/2)))*180/Math.PI; }
+function handleBase(o, sx, sy){
+  const ca = Math.atan2(o.w/2, o.h/2)*180/Math.PI;
+  if (sx === 0) return 0;          // topo/base → ↕
+  if (sy === 0) return 90;         // laterais  → ↔
+  return sx*sy < 0 ? ca : 180-ca;  // cantos    → diagonal
+}
+function cursorFor(base, angle){
+  const d = ((base + angle) % 180 + 180) % 180;
+  return ['ns-resize','nesw-resize','ew-resize','nwse-resize'][Math.round(d/45)%4];
+}
+
+/* ---------- lista de modelos (criada uma vez) ---------- */
+MODELS.forEach(m => {
+  const b = document.createElement('button');
+  b.className = 'mtile'; b.dataset.id = m.id; b.setAttribute('aria-label', m.name);
+  b.innerHTML = `<img src="${m.src}" alt="" draggable="false" style="width:${m.tw}px;height:${m.th}px">
+    <span class="check"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6.5"/></svg></span>`;
+  b.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    e.preventDefault();
+    b.setPointerCapture(e.pointerId);
+    drag = { kind:'tile', x:e.clientX, y:e.clientY, moved:false };
+    // Clicar no modelo já selecionado MANTÉM a seleção; outro modelo só troca.
+    set({ model: m.id, balloon: true });
+  });
+  b.addEventListener('pointermove', e => {
+    if (!drag || drag.kind !== 'tile') return;
+    if (!drag.moved && Math.hypot(e.clientX-drag.x, e.clientY-drag.y) < CFG.DRAG_THRESHOLD) return;
+    drag.moved = true;
+    set({ tileDrag: toStage(e) });         // tentativa de arrastar: prévia + aviso
+  });
+  ['pointerup','pointercancel'].forEach(t => b.addEventListener(t, () => {
+    if (!drag || drag.kind !== 'tile') return;
+    drag = null; set({ tileDrag: null });  // soltar não insere; o modelo continua selecionado
+  }));
+  flyout.appendChild(b);
+});
+function toggleFlyout(){ const open = !S.flyoutOpen; set({ flyoutOpen: open, balloon: open, ghost: null }); }
+$('tool-implant').addEventListener('click', toggleFlyout);
+$('tool-implant-chev').addEventListener('click', toggleFlyout);
+
+/* ---------- Excluir ---------- */
+$('btn-delete').addEventListener('click', () => {
+  if (!S.selId) return;
+  set({ objs: S.objs.filter(o => o.id !== S.selId), selId: null, hover: false });
+});
+
+/* ---------- render ---------- */
+const objEls = new Map();
+function render(){
+  const m = model(), isArmed = armed(), o = selObj();
+
+  // ferramenta Implante: aberta + mostra o último modelo
+  $('tool-implant').classList.toggle('is-open', S.flyoutOpen);
+  $('tool-implant-chev').classList.toggle('is-open', S.flyoutOpen);
+  $('tool-implant').setAttribute('aria-expanded', S.flyoutOpen);
+  const ti = $('tool-implant-img');
+  if (!m || m.id === 1) { ti.src = 'assets/tool-implante.png'; ti.style.width = '82px'; ti.style.height = '58px'; }
+  else { ti.src = m.src; ti.style.width = m.tw + 'px'; ti.style.height = m.th + 'px'; }
+
+  // lista + balão
+  flyout.classList.toggle('open', S.flyoutOpen);
+  flyout.querySelectorAll('.mtile').forEach(b => {
+    const on = +b.dataset.id === S.model;
+    b.classList.toggle('is-selected', on); b.setAttribute('aria-pressed', on);
+  });
+  balloon.classList.toggle('show', isArmed && S.balloon);
+  if (m) {
+    // centraliza no modelo, sem invadir a barra lateral (borda esquerda ≥ 148px)
+    const c = CFG.FLYOUT.left + (m.id-1)*(CFG.FLYOUT.tileW+CFG.FLYOUT.gap) + CFG.FLYOUT.tileW/2;
+    const left = Math.max(148, c - 110);
+    balloon.style.left = left + 'px';
+    balloon.querySelector('.tip').style.marginLeft = (c - left - 7) + 'px';
+  }
+  image.classList.toggle('armed', isArmed);
+
+  // prévia translúcida
+  const g = S.tileDrag || (isArmed ? S.ghost : null), gm = m || MODELS[0];
+  ghost.classList.toggle('show', !!g);
+  chip.classList.toggle('show', !!S.tileDrag);
+  if (g) {
+    $('ghost-img').src = gm.src;
+    Object.assign(ghost.style, { left:(g.x-gm.w/2)+'px', top:(g.y-gm.h/2)+'px', width:gm.w+'px', height:gm.h+'px' });
+    Object.assign(chip.style, { left:Math.min(1060, g.x+gm.w/2+10)+'px', top:(g.y-14)+'px' });
+  }
+
+  // implantes (elementos mantidos para não perder a captura do ponteiro)
+  const ids = new Set(S.objs.map(x => x.id));
+  for (const [id, el] of objEls) if (!ids.has(id)) { el.remove(); objEls.delete(id); }
+  S.objs.forEach(ob => {
+    let el = objEls.get(ob.id);
+    if (!el) { el = makeObj(ob); objEls.set(ob.id, el); objsEl.appendChild(el); }
+    el.querySelector('img').src = MODELS.find(x => x.id === ob.m).src;
+    Object.assign(el.style, { left:(ob.cx-ob.w/2)+'px', top:(ob.cy-ob.h/2)+'px', width:ob.w+'px', height:ob.h+'px', transform:`rotate(${ob.angle}deg)` });
+  });
+
+  // seleção
+  $('btn-delete').disabled = !o;
+  sel.classList.toggle('show', !!o);
+  stage.classList.toggle('is-rotating', S.rotating);
+  rot.classList.toggle('is-active', S.rotating);
+  rot.classList.toggle('is-hover', S.hover && !S.rotating);
+  axis.classList.toggle('show', !!o && S.rotating);
+  pill.classList.toggle('show', !!o && (S.rotating || S.hover));
+  if (o) {
+    Object.assign(sel.style, { left:(o.cx-o.w/2)+'px', top:(o.cy-o.h/2)+'px', width:o.w+'px', height:o.h+'px', transform:`rotate(${o.angle}deg)` });
+    handles.forEach(h => {
+      const sx=+h.dataset.sx, sy=+h.dataset.sy, base=handleBase(o,sx,sy);
+      h.style.cursor = cursorFor(base, o.angle);
+      h.querySelector('.on').style.transform = `rotate(${base-90}deg)`;
+      h.classList.toggle('is-active', S.resizing && S.handle === sx+','+sy);
+    });
+    Object.assign(axis.style, { left:o.cx+'px', top:(o.cy-120)+'px' });
+    const R = o.h/2 + CFG.HANDLE_DIST, rad = o.angle*Math.PI/180;
+    const hx = o.cx + R*Math.sin(rad), hy = o.cy - R*Math.cos(rad), deg = Math.round(o.angle);
+    pill.textContent = S.rotating ? (deg<0 ? '−'+Math.abs(deg) : deg) + '°' : 'Girar';
+    pill.classList.toggle('snapped', S.rotating && S.snapped);
+    pill.style.left = Math.min(1250, Math.max(148, hx+22)) + 'px';
+    pill.style.top  = Math.min(608,  Math.max(76,  hy-15)) + 'px';
+  }
+}
+function set(p){ Object.assign(S, p); render(); }
+
+/* ---------- imagem: inserir / desselecionar ---------- */
+image.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || !armed()) { if (S.ghost) set({ ghost:null }); return; }
+  set({ ghost: toStage(e) });
+});
+image.addEventListener('pointerleave', () => { if (S.ghost) set({ ghost:null }); });
+image.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (drag) return;
+  const p = toStage(e), m = model();
+  if (armed()) {
+    const id = S.nextId;
+    S.objs.push({ id, m:m.id, cx:p.x, cy:p.y, w:m.w+2*CFG.PAD, h:m.h+2*CFG.PAD, angle:0 });
+    // o balão some ao tocar na imagem; a lista fecha; o implante novo já vem selecionado
+    set({ nextId:id+1, selId:id, flyoutOpen:CFG.KEEP_MODE_AFTER_INSERT, balloon:false, ghost:null });
+  } else {
+    set({ selId:null, hover:false });
+  }
+});
+
+/* ---------- mover ---------- */
+function makeObj(ob){
+  const el = document.createElement('div');
+  el.className = 'obj';
+  el.innerHTML = '<img alt="Implante" draggable="false">';
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    e.preventDefault(); e.stopPropagation();
+    el.setPointerCapture(e.pointerId);
+    const cur = S.objs.find(x => x.id === ob.id);
+    drag = { kind:'move', id:ob.id, x:e.clientX, y:e.clientY, cx:cur.cx, cy:cur.cy, scale:stageInfo().scale };
+    set({ selId:ob.id, ghost:null });
+  });
+  el.addEventListener('pointermove', e => {
+    if (!drag || drag.kind !== 'move' || drag.id !== ob.id) return;
+    const B = CFG.BOUNDS, cur = S.objs.find(x => x.id === ob.id);
+    cur.cx = Math.min(B.x1, Math.max(B.x0, drag.cx + (e.clientX-drag.x)/drag.scale));
+    cur.cy = Math.min(B.y1, Math.max(B.y0, drag.cy + (e.clientY-drag.y)/drag.scale));
+    render();
+  });
+  ['pointerup','pointercancel'].forEach(t => el.addEventListener(t, () => { if (drag && drag.kind==='move') drag=null; }));
+  return el;
+}
+
+/* ---------- girar ---------- */
+rot.addEventListener('pointerdown', e => {
+  e.stopPropagation(); e.preventDefault();
+  if (e.button > 0 || !selObj()) return;
+  rot.setPointerCapture(e.pointerId);
+  drag = { kind:'rotate', start:pointerAngle(e), base:selObj().angle };
+  set({ rotating:true, snapped:false });
+});
+rot.addEventListener('pointermove', e => {
+  if (!drag || drag.kind !== 'rotate') return;
+  e.stopPropagation();
+  let a = norm(drag.base + pointerAngle(e) - drag.start), snapped = false;
+  if (e.shiftKey) { a = Math.round(a/CFG.SHIFT_STEP)*CFG.SHIFT_STEP; snapped = true; }
+  else if (CFG.SNAP_STEP) { const n = Math.round(a/CFG.SNAP_STEP)*CFG.SNAP_STEP; if (Math.abs(a-n) <= CFG.SNAP_TOL) { a=n; snapped=true; } }
+  patchSel({ angle:norm(a) }); set({ snapped });
+});
+['pointerup','pointercancel'].forEach(t => rot.addEventListener(t, e => { e.stopPropagation(); if (drag && drag.kind==='rotate'){ drag=null; set({ rotating:false, hover:false }); } }));
+rot.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') set({ hover:true }); });
+rot.addEventListener('pointerleave', () => set({ hover:false }));
+rot.addEventListener('dblclick', e => { e.stopPropagation(); patchSel({ angle:0 }); render(); });
+
+/* ---------- redimensionar (cantos = proporcional; meios = um eixo) ---------- */
+handles.forEach(h => {
+  const sx=+h.dataset.sx, sy=+h.dataset.sy;
+  h.addEventListener('pointerdown', e => {
+    e.stopPropagation(); e.preventDefault();
+    const o = selObj(); if (e.button > 0 || !o) return;
+    const r = o.angle*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+    const lx=-sx*o.w/2, ly=-sy*o.h/2;                    // ponto oposto (fica fixo)
+    h.setPointerCapture(e.pointerId);
+    drag = { kind:'resize', sx, sy, w0:o.w, h0:o.h, anchor:{ x:o.cx+lx*c-ly*s, y:o.cy+lx*s+ly*c }, ...stageInfo() };
+    set({ resizing:true, handle:sx+','+sy });
+  });
+  h.addEventListener('pointermove', e => {
+    if (!drag || drag.kind !== 'resize') return;
+    e.stopPropagation();
+    const o = selObj(), p = toStage(e, drag), r=o.angle*Math.PI/180, c=Math.cos(r), s=Math.sin(r);
+    const vx=p.x-drag.anchor.x, vy=p.y-drag.anchor.y, lx=vx*c+vy*s, ly=-vx*s+vy*c;
+    let w=drag.w0, hh=drag.h0;
+    if (drag.sx && drag.sy) {
+      let k = (lx*drag.sx*drag.w0 + ly*drag.sy*drag.h0) / (drag.w0**2 + drag.h0**2);
+      k = Math.max(Math.max(CFG.MIN_W/drag.w0, CFG.MIN_H/drag.h0), Math.min(3, k));
+      w = drag.w0*k; hh = drag.h0*k;
+    } else if (drag.sx) w  = Math.min(CFG.MAX_W, Math.max(CFG.MIN_W, lx*drag.sx));
+    else                hh = Math.min(CFG.MAX_H, Math.max(CFG.MIN_H, ly*drag.sy));
+    const hx=drag.sx*w/2, hy=drag.sy*hh/2;
+    patchSel({ w, h:hh, cx:drag.anchor.x+hx*c-hy*s, cy:drag.anchor.y+hx*s+hy*c }); render();
+  });
+  ['pointerup','pointercancel'].forEach(t => h.addEventListener(t, e => { e.stopPropagation(); if (drag && drag.kind==='resize'){ drag=null; set({ resizing:false, handle:null }); } }));
+});
+
+/* ---------- ajuste à janela (só para o protótipo) ---------- */
+function fit(){ const k=Math.min(innerWidth/1320, innerHeight/780, 1); const f=$('fit'); f.style.transform=`scale(${k})`; f.style.width=1320*k+'px'; f.style.height=780*k+'px'; }
+addEventListener('resize', fit); fit();
+
+window.__proto = { set, S, render }; // usado só para gerar os prints — remover
+render();
+</script>
+</body>
+</html>
