@@ -53,7 +53,7 @@ body{display:flex;align-items:center;justify-content:center;min-height:100vh}
 .balloon .tip{width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:7px solid var(--dark-pill)}
 .balloon .txt{height:32px;padding:0 12px;display:flex;align-items:center;border-radius:6px;background:var(--dark-pill);color:#fff;font:500 14px Roboto,sans-serif;white-space:nowrap;box-shadow:var(--shadow-pill)}
 
-/* Prévia translúcida (desktop: segue o mouse; arraste: segue o dedo) */
+/* Prévia translúcida: só desktop, ao mover o mouse sobre a imagem com um modelo ativo */
 .ghost{position:absolute;opacity:.6;pointer-events:none;display:none}
 .ghost img{width:100%;height:100%;display:block}
 .ghost.show{display:block}
@@ -188,6 +188,7 @@ const CFG = {
   SNAP_STEP: 45, SNAP_TOL: 4,    // encaixe em múltiplos de 45° (±4°)
   SHIFT_STEP: 15,                // Shift = passos de 15°
   DRAG_THRESHOLD: 8,             // px para considerar "tentativa de arrastar" um modelo
+  DRAG_HINT_LINGER: 1500,        // ms que a dica continua visível depois de soltar
   KEEP_MODE_AFTER_INSERT: false, // true = continua no modo inserir depois de inserir
   MIN_W: 20, MAX_W: 200, MIN_H: 40, MAX_H: 330,
   BOUNDS: { x0: 150, x1: 1310, y0: 78, y1: 634 }, // área da imagem (centro do objeto)
@@ -206,10 +207,11 @@ const S = {
   objs: [{ id: 1, m: 1, cx: 577, cy: 438, w: 57, h: 109, angle: 0 }],
   nextId: 2, selId: null,
   flyoutOpen: true, model: 1, balloon: true,   // ao abrir: último modelo já selecionado + balão
-  ghost: null, tileDrag: null,
+  ghost: null, tileDrag: null, dragHint: null, // dragHint = posição da dica de arraste
   rotating: false, hover: false, snapped: false, resizing: false, handle: null
 };
 let drag = null;
+let hintTimer = null;
 
 const $ = id => document.getElementById(id);
 const stage=$('stage'), image=$('image'), objsEl=$('objs'), sel=$('sel'), rot=$('rot'), pill=$('pill'), axis=$('axis');
@@ -254,11 +256,16 @@ MODELS.forEach(m => {
     if (!drag || drag.kind !== 'tile') return;
     if (!drag.moved && Math.hypot(e.clientX-drag.x, e.clientY-drag.y) < CFG.DRAG_THRESHOLD) return;
     drag.moved = true;
-    set({ tileDrag: toStage(e) });         // tentativa de arrastar: prévia + aviso
+    // Tentativa de arrastar: SEM fantasma (não sugerir drag-and-drop), só a dica discreta perto do cursor
+    const p = toStage(e);
+    clearTimeout(hintTimer);
+    set({ tileDrag: p, dragHint: p, ghost: null });
   });
   ['pointerup','pointercancel'].forEach(t => b.addEventListener(t, () => {
     if (!drag || drag.kind !== 'tile') return;
+    const moved = drag.moved;
     drag = null; set({ tileDrag: null });  // soltar não insere; o modelo continua selecionado
+    if (moved) { clearTimeout(hintTimer); hintTimer = setTimeout(() => set({ dragHint: null }), CFG.DRAG_HINT_LINGER); }
   }));
   flyout.appendChild(b);
 });
@@ -301,15 +308,17 @@ function render(){
   }
   image.classList.toggle('armed', isArmed);
 
-  // prévia translúcida
-  const g = S.tileDrag || (isArmed ? S.ghost : null), gm = m || MODELS[0];
+  // prévia translúcida: só desktop, modelo ativo e mouse se movendo normalmente sobre a imagem
+  // (nunca durante a tentativa de arrastar um modelo da lista)
+  const g = isArmed ? S.ghost : null, gm = m || MODELS[0];
   ghost.classList.toggle('show', !!g);
-  chip.classList.toggle('show', !!S.tileDrag);
   if (g) {
     $('ghost-img').src = gm.src;
     Object.assign(ghost.style, { left:(g.x-gm.w/2)+'px', top:(g.y-gm.h/2)+'px', width:gm.w+'px', height:gm.h+'px' });
-    Object.assign(chip.style, { left:Math.min(1060, g.x+gm.w/2+10)+'px', top:(g.y-14)+'px' });
   }
+  // dica discreta da tentativa de arrastar (neutra, sem erro), perto do cursor/dedo
+  chip.classList.toggle('show', !!S.dragHint);
+  if (S.dragHint) Object.assign(chip.style, { left:Math.min(1040, S.dragHint.x+16)+'px', top:Math.min(740, S.dragHint.y+16)+'px' });
 
   // implantes (elementos mantidos para não perder a captura do ponteiro)
   const ids = new Set(S.objs.map(x => x.id));
@@ -350,8 +359,10 @@ function set(p){ Object.assign(S, p); render(); }
 
 /* ---------- imagem: inserir / desselecionar ---------- */
 image.addEventListener('pointermove', e => {
-  if (e.pointerType !== 'mouse' || !armed()) { if (S.ghost) set({ ghost:null }); return; }
-  set({ ghost: toStage(e) });
+  const tileDragging = !!(drag && drag.kind === 'tile' && drag.moved);
+  if (e.pointerType !== 'mouse' || !armed() || tileDragging) { if (S.ghost) set({ ghost:null }); return; }
+  if (drag && drag.kind === 'tile') drag = null;  // limpa resto de uma tentativa de arraste
+  set({ ghost: toStage(e), dragHint: null, tileDrag: null });   // movimento normal: o fantasma volta e a dica some
 });
 image.addEventListener('pointerleave', () => { if (S.ghost) set({ ghost:null }); });
 image.addEventListener('pointerdown', e => {
